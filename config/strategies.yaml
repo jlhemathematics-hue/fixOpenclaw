@@ -1,0 +1,365 @@
+# Repair Strategies Configuration
+# Define repair strategies for different types of anomalies
+
+strategies:
+  # Database Repair Strategies
+  - name: "database_connection_timeout"
+    pattern: "connection.*timeout.*database|database.*connection.*timeout"
+    category: "database"
+    severity: "high"
+    description: "Fix database connection timeout issues"
+    actions:
+      - type: "config_update"
+        description: "Increase database connection timeout"
+        params:
+          file: "database.conf"
+          key: "connection_timeout"
+          value: 60
+          backup: true
+      - type: "config_update"
+        description: "Increase connection pool size"
+        params:
+          file: "database.conf"
+          key: "max_connections"
+          value: 100
+          backup: true
+      - type: "restart_service"
+        description: "Restart database connection pool"
+        params:
+          service: "database_pool"
+          graceful: true
+    validation:
+      - type: "health_check"
+        endpoint: "/health/database"
+        expected_status: 200
+      - type: "connection_test"
+        target: "database"
+    rollback_on_failure: true
+
+  - name: "database_query_slow"
+    pattern: "slow.*query|query.*execution.*time"
+    category: "database"
+    severity: "medium"
+    description: "Optimize slow database queries"
+    actions:
+      - type: "analyze_query"
+        description: "Analyze query execution plan"
+      - type: "add_index"
+        description: "Add missing indexes"
+        params:
+          auto_detect: true
+      - type: "update_statistics"
+        description: "Update database statistics"
+    validation:
+      - type: "query_performance_test"
+        threshold: 1000  # ms
+    rollback_on_failure: false
+
+  # Memory Repair Strategies
+  - name: "out_of_memory"
+    pattern: "OutOfMemory|MemoryError|heap space"
+    category: "resource"
+    severity: "critical"
+    description: "Fix out of memory errors"
+    actions:
+      - type: "increase_heap"
+        description: "Increase JVM heap size"
+        params:
+          current_multiplier: 1.5
+          max_heap: "8g"
+      - type: "enable_gc_logging"
+        description: "Enable garbage collection logging"
+      - type: "analyze_heap_dump"
+        description: "Analyze heap dump for memory leaks"
+      - type: "restart_service"
+        description: "Restart service with new settings"
+        params:
+          graceful: true
+          drain_connections: true
+    validation:
+      - type: "memory_check"
+        max_usage: 0.8  # 80%
+      - type: "health_check"
+        endpoint: "/health"
+    rollback_on_failure: true
+
+  - name: "memory_leak"
+    pattern: "memory.*leak|Memory leak"
+    category: "resource"
+    severity: "high"
+    description: "Detect and fix memory leaks"
+    actions:
+      - type: "enable_profiling"
+        description: "Enable memory profiling"
+      - type: "analyze_heap"
+        description: "Analyze heap for leak patterns"
+      - type: "restart_service"
+        description: "Restart service to clear leaked memory"
+        params:
+          graceful: true
+    validation:
+      - type: "memory_trend_check"
+        duration: 3600  # 1 hour
+    rollback_on_failure: false
+
+  # Network Repair Strategies
+  - name: "connection_refused"
+    pattern: "connection.*refused|Connection refused"
+    category: "network"
+    severity: "high"
+    description: "Fix connection refused errors"
+    actions:
+      - type: "check_service_status"
+        description: "Check if target service is running"
+      - type: "restart_service"
+        description: "Restart target service if down"
+        params:
+          graceful: true
+      - type: "check_firewall"
+        description: "Verify firewall rules"
+      - type: "update_endpoints"
+        description: "Update service endpoints if changed"
+    validation:
+      - type: "connection_test"
+        target: "service"
+        retry: 3
+      - type: "health_check"
+        endpoint: "/health"
+    rollback_on_failure: true
+
+  - name: "network_timeout"
+    pattern: "network.*timeout|timeout.*network"
+    category: "network"
+    severity: "high"
+    description: "Fix network timeout issues"
+    actions:
+      - type: "config_update"
+        description: "Increase network timeout"
+        params:
+          key: "network_timeout"
+          value: 30000  # ms
+      - type: "enable_retry"
+        description: "Enable automatic retry with backoff"
+        params:
+          max_retries: 3
+          backoff_multiplier: 2
+      - type: "check_network_latency"
+        description: "Check network latency to target"
+    validation:
+      - type: "connection_test"
+        timeout: 30000
+    rollback_on_failure: true
+
+  # Application Repair Strategies
+  - name: "null_pointer_exception"
+    pattern: "NullPointerException|null.*pointer"
+    category: "exception"
+    severity: "high"
+    description: "Fix null pointer exceptions"
+    actions:
+      - type: "add_null_check"
+        description: "Add null validation"
+        params:
+          auto_detect: true
+      - type: "add_default_value"
+        description: "Add default value initialization"
+      - type: "restart_service"
+        description: "Restart service after fix"
+        params:
+          graceful: true
+    validation:
+      - type: "unit_test"
+        test_suite: "null_safety"
+      - type: "integration_test"
+    rollback_on_failure: true
+
+  - name: "validation_error"
+    pattern: "validation.*error|invalid.*input"
+    category: "validation"
+    severity: "medium"
+    description: "Fix input validation errors"
+    actions:
+      - type: "add_validation"
+        description: "Add input validation rules"
+        params:
+          strict_mode: true
+      - type: "add_sanitization"
+        description: "Add input sanitization"
+      - type: "update_error_messages"
+        description: "Improve error messages"
+    validation:
+      - type: "validation_test"
+        test_cases: "validation_suite"
+    rollback_on_failure: false
+
+  # Performance Repair Strategies
+  - name: "high_cpu_usage"
+    pattern: "CPU.*(?:9[0-9]|100)%|high.*cpu"
+    category: "resource"
+    severity: "medium"
+    description: "Reduce high CPU usage"
+    actions:
+      - type: "enable_profiling"
+        description: "Enable CPU profiling"
+      - type: "identify_hot_spots"
+        description: "Identify CPU hot spots"
+      - type: "optimize_code"
+        description: "Optimize identified hot spots"
+      - type: "scale_horizontally"
+        description: "Add more instances"
+        params:
+          instances: 2
+    validation:
+      - type: "cpu_check"
+        max_usage: 0.7  # 70%
+        duration: 300  # 5 minutes
+    rollback_on_failure: false
+
+  - name: "high_response_time"
+    pattern: "response time.*high|slow.*response"
+    category: "performance"
+    severity: "medium"
+    description: "Improve response time"
+    actions:
+      - type: "enable_caching"
+        description: "Enable response caching"
+        params:
+          cache_ttl: 300  # seconds
+      - type: "optimize_queries"
+        description: "Optimize database queries"
+      - type: "add_indexes"
+        description: "Add database indexes"
+      - type: "enable_compression"
+        description: "Enable response compression"
+    validation:
+      - type: "response_time_test"
+        max_time: 1000  # ms
+    rollback_on_failure: false
+
+  # Service Availability Strategies
+  - name: "service_unavailable"
+    pattern: "service unavailable|503|502"
+    category: "availability"
+    severity: "high"
+    description: "Restore service availability"
+    actions:
+      - type: "check_dependencies"
+        description: "Check dependent services"
+      - type: "restart_service"
+        description: "Restart unavailable service"
+        params:
+          graceful: false
+          force: true
+      - type: "enable_circuit_breaker"
+        description: "Enable circuit breaker"
+        params:
+          threshold: 5
+          timeout: 60000
+      - type: "fallback_service"
+        description: "Switch to fallback service"
+    validation:
+      - type: "health_check"
+        endpoint: "/health"
+        expected_status: 200
+      - type: "availability_test"
+        duration: 60  # seconds
+    rollback_on_failure: true
+
+  - name: "deadlock"
+    pattern: "deadlock|Deadlock"
+    category: "concurrency"
+    severity: "critical"
+    description: "Resolve deadlock situations"
+    actions:
+      - type: "detect_deadlock"
+        description: "Detect deadlock participants"
+      - type: "kill_transaction"
+        description: "Kill deadlocked transaction"
+        params:
+          strategy: "youngest"
+      - type: "restart_service"
+        description: "Restart service if needed"
+        params:
+          graceful: true
+      - type: "optimize_locking"
+        description: "Optimize locking strategy"
+    validation:
+      - type: "concurrency_test"
+        threads: 10
+        duration: 60
+    rollback_on_failure: true
+
+  # Disk Space Strategies
+  - name: "disk_full"
+    pattern: "disk.*full|no space left"
+    category: "resource"
+    severity: "critical"
+    description: "Free up disk space"
+    actions:
+      - type: "clean_logs"
+        description: "Clean old log files"
+        params:
+          older_than: 7  # days
+      - type: "clean_temp"
+        description: "Clean temporary files"
+      - type: "compress_files"
+        description: "Compress old files"
+      - type: "archive_data"
+        description: "Archive old data"
+        params:
+          older_than: 30  # days
+    validation:
+      - type: "disk_space_check"
+        min_free: 0.2  # 20%
+    rollback_on_failure: false
+
+# Strategy Selection Rules
+selection_rules:
+  # Priority-based selection
+  - condition: "severity == 'critical'"
+    priority: 1
+    auto_apply: true
+
+  - condition: "severity == 'high'"
+    priority: 2
+    auto_apply: true
+
+  - condition: "severity == 'medium'"
+    priority: 3
+    auto_apply: false  # Require approval
+
+  # Category-based rules
+  - condition: "category == 'security'"
+    auto_apply: false  # Always require approval for security
+
+  - condition: "category == 'database' and severity == 'critical'"
+    auto_apply: true
+    notify: true
+
+  - condition: "category == 'resource' and severity == 'critical'"
+    auto_apply: true
+    notify: true
+
+# Global Settings
+settings:
+  # Retry settings
+  max_retries: 3
+  retry_delay: 5  # seconds
+  backoff_multiplier: 2
+
+  # Validation settings
+  validation_timeout: 300  # seconds
+  require_validation: true
+
+  # Backup settings
+  create_backup: true
+  backup_retention: 7  # days
+
+  # Notification settings
+  notify_on_success: false
+  notify_on_failure: true
+  notify_on_critical: true
+
+  # Rollback settings
+  auto_rollback: true
+  rollback_timeout: 60  # seconds

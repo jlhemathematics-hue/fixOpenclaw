@@ -1,0 +1,255 @@
+# Anomaly Detection Patterns
+# Define custom patterns for detecting specific types of anomalies in logs
+
+patterns:
+  # Critical Errors
+  - name: "fatal_error"
+    pattern: "FATAL|Fatal|fatal|CRITICAL|Critical"
+    severity: "critical"
+    category: "fatal"
+    description: "Fatal errors that require immediate attention"
+    auto_repair: true
+
+  - name: "exception"
+    pattern: "Exception|EXCEPTION|Traceback|Stack trace"
+    severity: "critical"
+    category: "exception"
+    description: "Unhandled exceptions in the application"
+    auto_repair: true
+
+  - name: "out_of_memory"
+    pattern: "OutOfMemory|MemoryError|memory.*exhausted|heap space"
+    severity: "critical"
+    category: "resource"
+    description: "Memory exhaustion errors"
+    auto_repair: true
+
+  # High Priority Errors
+  - name: "error"
+    pattern: "ERROR|Error(?!:)"
+    severity: "high"
+    category: "error"
+    description: "General application errors"
+    auto_repair: true
+
+  - name: "database_error"
+    pattern: "DatabaseError|database.*error|SQL.*error|Connection.*database.*failed"
+    severity: "high"
+    category: "database"
+    description: "Database-related errors"
+    auto_repair: true
+
+  - name: "connection_timeout"
+    pattern: "connection.*timeout|Connection.*timeout|timeout.*connection"
+    severity: "high"
+    category: "network"
+    description: "Connection timeout errors"
+    auto_repair: true
+
+  - name: "connection_refused"
+    pattern: "connection.*refused|Connection refused|refused.*connection"
+    severity: "high"
+    category: "network"
+    description: "Connection refused errors"
+    auto_repair: true
+
+  - name: "null_pointer"
+    pattern: "NullPointerException|NullReferenceException|null.*pointer|nullptr"
+    severity: "high"
+    category: "exception"
+    description: "Null pointer/reference errors"
+    auto_repair: true
+
+  # Medium Priority Warnings
+  - name: "warning"
+    pattern: "WARNING|Warning|WARN(?!ING)"
+    severity: "medium"
+    category: "warning"
+    description: "Warning messages that may indicate issues"
+    auto_repair: false
+
+  - name: "slow_query"
+    pattern: "slow.*query|query.*slow|execution time.*[5-9]\d+|execution time.*\d{3,}"
+    severity: "medium"
+    category: "performance"
+    description: "Slow database queries"
+    auto_repair: true
+
+  - name: "high_cpu"
+    pattern: "CPU.*(?:9[0-9]|100)%|cpu.*(?:9[0-9]|100)%"
+    severity: "medium"
+    category: "resource"
+    description: "High CPU usage"
+    auto_repair: true
+
+  - name: "high_memory"
+    pattern: "memory.*(?:8[5-9]|9[0-9]|100)%|Memory.*(?:8[5-9]|9[0-9]|100)%"
+    severity: "medium"
+    category: "resource"
+    description: "High memory usage"
+    auto_repair: true
+
+  # Network Issues
+  - name: "network_error"
+    pattern: "network.*error|Network.*error|NetworkException"
+    severity: "high"
+    category: "network"
+    description: "General network errors"
+    auto_repair: true
+
+  - name: "socket_error"
+    pattern: "socket.*error|Socket.*error|SocketException"
+    severity: "high"
+    category: "network"
+    description: "Socket-related errors"
+    auto_repair: true
+
+  - name: "ssl_error"
+    pattern: "SSL.*error|TLS.*error|certificate.*error"
+    severity: "high"
+    category: "security"
+    description: "SSL/TLS certificate errors"
+    auto_repair: false
+
+  # Application Errors
+  - name: "authentication_failed"
+    pattern: "authentication.*failed|Authentication failed|login.*failed"
+    severity: "high"
+    category: "security"
+    description: "Authentication failures"
+    auto_repair: false
+
+  - name: "authorization_failed"
+    pattern: "authorization.*failed|Authorization failed|access.*denied|permission denied"
+    severity: "medium"
+    category: "security"
+    description: "Authorization failures"
+    auto_repair: false
+
+  - name: "validation_error"
+    pattern: "validation.*error|Validation.*error|invalid.*input"
+    severity: "medium"
+    category: "validation"
+    description: "Input validation errors"
+    auto_repair: true
+
+  # Service Issues
+  - name: "service_unavailable"
+    pattern: "service unavailable|Service unavailable|503|502 Bad Gateway"
+    severity: "high"
+    category: "availability"
+    description: "Service unavailability"
+    auto_repair: true
+
+  - name: "timeout"
+    pattern: "timeout|Timeout|TIMEOUT"
+    severity: "medium"
+    category: "performance"
+    description: "General timeout errors"
+    auto_repair: true
+
+  - name: "deadlock"
+    pattern: "deadlock|Deadlock|DEADLOCK"
+    severity: "critical"
+    category: "concurrency"
+    description: "Database or thread deadlock"
+    auto_repair: true
+
+  # Performance Issues
+  - name: "response_time_high"
+    pattern: "response time.*[5-9]\d+|response.*slow"
+    severity: "medium"
+    category: "performance"
+    description: "High response time"
+    auto_repair: true
+
+  - name: "queue_full"
+    pattern: "queue.*full|Queue full|buffer.*full"
+    severity: "high"
+    category: "resource"
+    description: "Queue or buffer full"
+    auto_repair: true
+
+  - name: "disk_full"
+    pattern: "disk.*full|no space left|disk space.*low"
+    severity: "critical"
+    category: "resource"
+    description: "Disk space exhaustion"
+    auto_repair: true
+
+  # Recovery and Restart
+  - name: "restart"
+    pattern: "restart|Restart|RESTART|restarting"
+    severity: "medium"
+    category: "lifecycle"
+    description: "Service restart events"
+    auto_repair: false
+
+  - name: "recovery"
+    pattern: "recovery|Recovery|recovering"
+    severity: "medium"
+    category: "lifecycle"
+    description: "Recovery attempts"
+    auto_repair: false
+
+# Pattern Groups
+# Group related patterns for easier management
+pattern_groups:
+  critical:
+    - fatal_error
+    - exception
+    - out_of_memory
+    - deadlock
+    - disk_full
+
+  network:
+    - connection_timeout
+    - connection_refused
+    - network_error
+    - socket_error
+    - ssl_error
+
+  database:
+    - database_error
+    - slow_query
+    - deadlock
+
+  resource:
+    - out_of_memory
+    - high_cpu
+    - high_memory
+    - disk_full
+    - queue_full
+
+  security:
+    - authentication_failed
+    - authorization_failed
+    - ssl_error
+
+  performance:
+    - slow_query
+    - response_time_high
+    - high_cpu
+    - timeout
+
+# Severity Levels
+severity_levels:
+  critical:
+    priority: 1
+    alert: true
+    auto_repair: true
+
+  high:
+    priority: 2
+    alert: true
+    auto_repair: true
+
+  medium:
+    priority: 3
+    alert: false
+    auto_repair: false
+
+  low:
+    priority: 4
+    alert: false
+    auto_repair: false

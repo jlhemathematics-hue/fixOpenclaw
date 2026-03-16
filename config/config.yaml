@@ -42,10 +42,11 @@ monitoring:
     - "logs/system.log"
 
   # How often to check logs (in seconds)
-  check_interval: 5
+  check_interval: 10
 
   # Anomaly detection threshold (0.0 to 1.0)
-  anomaly_threshold: 0.8
+  # Lower = more sensitive, Higher = less sensitive
+  anomaly_threshold: 0.75
 
   # Maximum log file size to scan (in MB)
   max_log_size: 100
@@ -73,7 +74,8 @@ diagnostic:
   use_llm_analysis: true
 
   # Confidence threshold for diagnostics (0.0 to 1.0)
-  confidence_threshold: 0.7
+  # Higher = more confident diagnostics required
+  confidence_threshold: 0.65
 
   # Maximum context lines to include
   context_lines: 5
@@ -130,10 +132,12 @@ orchestrator:
   autonomous_mode: true
 
   # Autonomous cycle interval (in seconds)
-  cycle_interval: 60
+  # Increase for production to reduce resource usage
+  cycle_interval: 30
 
   # Maximum concurrent workflows
-  max_concurrent_workflows: 5
+  # Increase if you have more resources
+  max_concurrent_workflows: 3
 
   # Enable event notifications
   enable_notifications: true
