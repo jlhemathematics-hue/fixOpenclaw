@@ -1,0 +1,30 @@
+2024-03-16 10:00:00 INFO [System] OpenClaw service started successfully
+2024-03-16 10:00:01 INFO [Database] Connected to database server
+2024-03-16 10:00:02 INFO [API] REST API listening on port 8080
+2024-03-16 10:05:23 INFO [Request] Processing user request #12345
+2024-03-16 10:05:24 INFO [Request] Request completed successfully
+2024-03-16 10:10:45 WARNING [Memory] Memory usage at 75%
+2024-03-16 10:15:30 ERROR [Database] Connection timeout after 30 seconds
+2024-03-16 10:15:30 ERROR [Database] Failed to execute query: SELECT * FROM users
+2024-03-16 10:15:31 INFO [Database] Attempting to reconnect...
+2024-03-16 10:15:35 INFO [Database] Reconnection successful
+2024-03-16 10:20:12 INFO [Request] Processing user request #12346
+2024-03-16 10:20:15 ERROR [API] NullPointerException in UserService.getUser()
+2024-03-16 10:20:15 ERROR [API] Stack trace:
+2024-03-16 10:20:15 ERROR [API]   at com.openclaw.service.UserService.getUser(UserService.java:45)
+2024-03-16 10:20:15 ERROR [API]   at com.openclaw.controller.UserController.handleRequest(UserController.java:78)
+2024-03-16 10:25:00 WARNING [System] CPU usage spike detected: 92%
+2024-03-16 10:30:45 FATAL [System] OutOfMemoryError: Java heap space
+2024-03-16 10:30:45 FATAL [System] System entering emergency mode
+2024-03-16 10:30:46 INFO [System] Attempting automatic recovery...
+2024-03-16 10:30:50 ERROR [Recovery] Failed to allocate memory for recovery process
+2024-03-16 10:31:00 INFO [System] System restart initiated
+2024-03-16 10:31:30 INFO [System] OpenClaw service restarted
+2024-03-16 10:31:31 INFO [Database] Connected to database server
+2024-03-16 10:32:00 WARNING [Network] Connection refused to external service at api.example.com:443
+2024-03-16 10:32:01 ERROR [Network] Failed to connect after 3 retries
+2024-03-16 10:35:15 INFO [Request] Processing user request #12347
+2024-03-16 10:35:16 ERROR [Validation] Invalid input: email field is empty
+2024-03-16 10:40:00 INFO [Cache] Cache hit rate: 85%
+2024-03-16 10:45:22 WARNING [Database] Slow query detected: execution time 5.2 seconds
+2024-03-16 10:50:00 INFO [System] Health check passed

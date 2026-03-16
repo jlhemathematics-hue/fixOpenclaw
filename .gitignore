@@ -41,6 +41,7 @@ ENV/
 
 # Logs
 logs/*.log
+!logs/openclaw.log
 !logs/.gitkeep
 *.log
 
