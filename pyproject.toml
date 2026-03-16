@@ -1,0 +1,115 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fixopenclaw"
+version = "0.1.0"
+description = "Autonomous OpenClaw diagnostics and repair system powered by multi-agent AI"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Johnny He", email = "jlhemathematics-hue@github.com"}
+]
+keywords = [
+    "autonomous",
+    "debugging",
+    "repair",
+    "ai",
+    "agents",
+    "llm",
+    "monitoring",
+    "openclaw"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Debuggers",
+    "Topic :: System :: Monitoring",
+]
+
+dependencies = [
+    "python-dotenv>=1.0.0",
+    "pyyaml>=6.0.1",
+    "python-dateutil>=2.8.2",
+    "openai>=1.12.0",
+    "anthropic>=0.18.0",
+    "google-generativeai>=0.3.0",
+    "streamlit>=1.31.0",
+    "streamlit-autorefresh>=1.0.1",
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "pydantic>=2.6.0",
+    "requests>=2.31.0",
+    "aiohttp>=3.9.0",
+    "click>=8.1.7",
+    "rich>=13.7.0",
+    "colorama>=0.4.6",
+    "watchdog>=4.0.0",
+    "loguru>=0.7.2",
+    "pandas>=2.2.0",
+    "numpy>=1.26.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "black>=24.1.0",
+    "flake8>=7.0.0",
+    "mypy>=1.8.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/jlhemathematics-hue/fixOpenclaw"
+Documentation = "https://github.com/jlhemathematics-hue/fixOpenclaw/docs"
+Repository = "https://github.com/jlhemathematics-hue/fixOpenclaw"
+Issues = "https://github.com/jlhemathematics-hue/fixOpenclaw/issues"
+
+[project.scripts]
+fixopenclaw = "main:main"
+
+[tool.setuptools]
+packages = ["src"]
+
+[tool.setuptools.package-data]
+src = ["**/*.yaml", "**/*.json"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310', 'py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=src --cov-report=html --cov-report=term-missing"
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true

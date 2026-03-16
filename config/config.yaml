@@ -1,0 +1,238 @@
+# FixOpenclaw Configuration
+# Main configuration file for the autonomous debugging and repair system
+
+# LLM Provider Configuration
+llm_provider:
+  # Default provider to use (openai, anthropic, google, azure, local)
+  default: "openai"
+
+  # OpenAI Configuration
+  openai:
+    api_key: "${OPENAI_API_KEY}"
+    model: "gpt-4"
+    temperature: 0.7
+    max_tokens: 2000
+
+  # Anthropic Configuration
+  anthropic:
+    api_key: "${ANTHROPIC_API_KEY}"
+    model: "claude-3-opus-20240229"
+    temperature: 0.7
+    max_tokens: 2000
+
+  # Google AI Configuration
+  google:
+    api_key: "${GOOGLE_API_KEY}"
+    model: "gemini-pro"
+    temperature: 0.7
+    max_tokens: 2000
+
+  # Azure OpenAI Configuration
+  azure:
+    api_key: "${AZURE_OPENAI_API_KEY}"
+    endpoint: "${AZURE_OPENAI_ENDPOINT}"
+    model: "gpt-4"
+    api_version: "2024-02-15-preview"
+
+# Monitoring Configuration
+monitoring:
+  # Log file paths to monitor
+  log_paths:
+    - "logs/openclaw.log"
+    - "logs/system.log"
+
+  # How often to check logs (in seconds)
+  check_interval: 5
+
+  # Anomaly detection threshold (0.0 to 1.0)
+  anomaly_threshold: 0.8
+
+  # Maximum log file size to scan (in MB)
+  max_log_size: 100
+
+  # Anomaly patterns (can be extended in patterns.yaml)
+  patterns:
+    - name: "error"
+      pattern: "ERROR|Error|error"
+      severity: "high"
+      category: "error"
+
+    - name: "exception"
+      pattern: "Exception|EXCEPTION|Traceback"
+      severity: "critical"
+      category: "exception"
+
+    - name: "fatal"
+      pattern: "FATAL|Fatal|fatal"
+      severity: "critical"
+      category: "fatal"
+
+# Diagnostic Configuration
+diagnostic:
+  # Enable LLM-powered root cause analysis
+  use_llm_analysis: true
+
+  # Confidence threshold for diagnostics (0.0 to 1.0)
+  confidence_threshold: 0.7
+
+  # Maximum context lines to include
+  context_lines: 5
+
+  # Enable pattern learning
+  learn_patterns: true
+
+# Repair Configuration
+repair:
+  # Enable automatic repair (if false, requires manual approval)
+  auto_repair: true
+
+  # Require approval for all repairs
+  require_approval: false
+
+  # Require approval for high-risk repairs only
+  require_approval_high_risk: true
+
+  # Maximum retry attempts
+  max_retry: 3
+
+  # Rollback on failure
+  rollback_on_failure: true
+
+  # Backup before repair
+  create_backup: true
+
+  # Repair timeout (in seconds)
+  repair_timeout: 300
+
+# Validation Configuration
+validation:
+  # Enable pre-validation checks
+  enable_pre_validation: true
+
+  # Enable post-validation checks
+  enable_post_validation: true
+
+  # Validation timeout (in seconds)
+  validation_timeout: 300
+
+  # Health check interval (in seconds)
+  health_check_interval: 10
+
+  # Success threshold for validation (0.0 to 1.0)
+  success_threshold: 0.9
+
+  # Run automated tests after repair
+  run_tests: true
+
+# Orchestrator Configuration
+orchestrator:
+  # Enable autonomous mode
+  autonomous_mode: true
+
+  # Autonomous cycle interval (in seconds)
+  cycle_interval: 60
+
+  # Maximum concurrent workflows
+  max_concurrent_workflows: 5
+
+  # Enable event notifications
+  enable_notifications: true
+
+# Logging Configuration
+logging:
+  # Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  level: "INFO"
+
+  # Log file path
+  file: "logs/fixopenclaw.log"
+
+  # Log format
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+  # Maximum log file size (in MB)
+  max_size: 10
+
+  # Number of backup files to keep
+  backup_count: 5
+
+# Dashboard Configuration
+dashboard:
+  # Dashboard port
+  port: 8501
+
+  # Dashboard host
+  host: "localhost"
+
+  # Auto-refresh interval (in seconds)
+  refresh_interval: 5
+
+  # Maximum history items to display
+  max_history_items: 100
+
+# API Configuration
+api:
+  # API server port
+  port: 8000
+
+  # API server host
+  host: "0.0.0.0"
+
+  # Enable authentication
+  enable_auth: false
+
+  # API key (if authentication enabled)
+  api_key: "${API_KEY}"
+
+  # CORS allowed origins
+  cors_origins:
+    - "http://localhost:3000"
+    - "http://localhost:8501"
+
+# Notifications Configuration
+notifications:
+  # Enable notifications
+  enabled: true
+
+  # Notification channels
+  channels:
+    # Webhook notifications
+    webhooks:
+      - url: "${WEBHOOK_URL}"
+        events:
+          - "anomaly_detected"
+          - "repair_completed"
+          - "repair_failed"
+          - "validation_failed"
+
+    # Email notifications (future)
+    email:
+      enabled: false
+      smtp_server: ""
+      smtp_port: 587
+      from_address: ""
+      to_addresses: []
+
+    # Slack notifications (future)
+    slack:
+      enabled: false
+      webhook_url: ""
+
+# System Configuration
+system:
+  # Working directory
+  working_dir: "."
+
+  # Temporary directory
+  temp_dir: "/tmp/fixopenclaw"
+
+  # Backup directory
+  backup_dir: "backups"
+
+  # Maximum backup age (in days)
+  max_backup_age: 7
+
+  # Enable metrics collection
+  enable_metrics: true
+
+  # Metrics collection interval (in seconds)
+  metrics_interval: 60
