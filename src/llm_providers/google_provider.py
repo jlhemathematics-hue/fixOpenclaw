@@ -2,11 +2,20 @@
 Google AI Provider Implementation
 
 Supports Gemini Pro, Gemini Ultra, and other Google AI models.
+
+NOTE: google-generativeai package is deprecated.
+This provider will be updated to use google-genai in the next version.
+For now, warnings are suppressed for compatibility.
 """
 
 import os
+import warnings
 from typing import List, Optional, Iterator
-import google.generativeai as genai
+
+# Suppress deprecation warning for google-generativeai
+with warnings.catch_warnings():
+    warnings.filterwarnings('ignore', category=FutureWarning)
+    import google.generativeai as genai
 
 from .base_provider import BaseLLMProvider, LLMMessage, LLMResponse
 

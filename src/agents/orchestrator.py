@@ -44,11 +44,7 @@ class Orchestrator:
         self.message_queue = Queue()
         self.message_lock = Lock()
 
-        # Agents
-        self.agents: Dict[str, BaseAgent] = {}
-        self._initialize_agents()
-
-        # State management
+        # State management (initialize BEFORE agents)
         self.system_state = {
             "status": "initializing",
             "active_workflows": [],
@@ -65,6 +61,10 @@ class Orchestrator:
 
         self.running = False
         self.message_thread = None
+
+        # Agents (initialize AFTER state)
+        self.agents: Dict[str, BaseAgent] = {}
+        self._initialize_agents()
 
     def _initialize_agents(self) -> None:
         """Initialize all agents."""

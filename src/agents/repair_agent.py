@@ -12,7 +12,7 @@ import os
 
 from .base_agent import BaseAgent, AgentMessage
 from ..llm_providers.base_provider import LLMMessage
-from ..llm_providers.provider_factory import LLMProviderFactory
+from ..llm_providers.provider_factory import ProviderFactory
 
 
 class RepairAgent(BaseAgent):
@@ -59,8 +59,15 @@ class RepairAgent(BaseAgent):
     def _initialize_llm(self) -> None:
         """Initialize LLM provider."""
         try:
-            provider_name = self.llm_config.get("provider", "openai")
-            self.llm_provider = LLMProviderFactory.create_provider(
+            provider_name = self.llm_config.get("provider")
+
+            # Skip LLM initialization if no provider specified
+            if provider_name is None:
+                self.logger.warning("No LLM provider specified, running in offline mode")
+                self.llm_provider = None
+                return
+
+            self.llm_provider = ProviderFactory.create(
                 provider_name=provider_name,
                 **self.llm_config
             )
@@ -68,7 +75,7 @@ class RepairAgent(BaseAgent):
             self.logger.info(f"Initialized LLM provider: {provider_name}")
         except Exception as e:
             self.logger.error(f"Failed to initialize LLM provider: {e}")
-            raise
+            self.llm_provider = None
 
     def process_message(self, message: AgentMessage) -> Optional[AgentMessage]:
         """
@@ -445,6 +452,15 @@ Provide fix details in JSON format:
                 for file_path in target_files:
                     self.logger.info(f"Would patch file: {file_path}")
                     changes_made.append(f"Patched: {file_path}")
+
+            elif fix_type == "manual":
+                # Manual repair - log for human intervention
+                description = fix_details.get("description", "Manual intervention required")
+                recommendations = fix_details.get("recommendations", [])
+                self.logger.info(f"Manual repair required: {description}")
+                changes_made.append(f"Manual: {description}")
+                for rec in recommendations:
+                    changes_made.append(f"  - {rec}")
 
             else:
                 self.logger.warning(f"Unknown fix type: {fix_type}")

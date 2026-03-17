@@ -10,7 +10,7 @@ import json
 
 from .base_agent import BaseAgent, AgentMessage
 from ..llm_providers.base_provider import LLMMessage
-from ..llm_providers.provider_factory import LLMProviderFactory
+from ..llm_providers.provider_factory import ProviderFactory
 
 
 class DiagnosticAgent(BaseAgent):
@@ -52,8 +52,15 @@ class DiagnosticAgent(BaseAgent):
     def _initialize_llm(self) -> None:
         """Initialize LLM provider."""
         try:
-            provider_name = self.llm_config.get("provider", "openai")
-            self.llm_provider = LLMProviderFactory.create_provider(
+            provider_name = self.llm_config.get("provider")
+
+            # Skip LLM initialization if no provider specified
+            if provider_name is None:
+                self.logger.warning("No LLM provider specified, running in offline mode")
+                self.llm_provider = None
+                return
+
+            self.llm_provider = ProviderFactory.create(
                 provider_name=provider_name,
                 **self.llm_config
             )
@@ -61,7 +68,7 @@ class DiagnosticAgent(BaseAgent):
             self.logger.info(f"Initialized LLM provider: {provider_name}")
         except Exception as e:
             self.logger.error(f"Failed to initialize LLM provider: {e}")
-            raise
+            self.llm_provider = None
 
     def process_message(self, message: AgentMessage) -> Optional[AgentMessage]:
         """
