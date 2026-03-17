@@ -9,6 +9,7 @@ import os
 import shutil
 import json
 import hashlib
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -59,8 +60,28 @@ class BackupManager:
         Returns:
             Dict with backup_id, path, files_backed_up, checksums.
         """
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_id = f"backup_{ts}" + (f"_{label}" if label else "")
+        # BUG FIX 1: Validate that source_paths is non-empty before creating
+        # a backup directory.  An empty backup is not meaningful and should
+        # be rejected immediately so callers don't assume a no-op backup
+        # succeeded.
+        if not source_paths:
+            return {
+                "success": False,
+                "backup_id": None,
+                "backup_path": None,
+                "files_backed_up": 0,
+                "errors": ["source_paths is empty — nothing to back up"],
+                "manifest": None,
+            }
+
+        # BUG FIX 2: Use microseconds + a short UUID fragment to make the
+        # backup_id unique even when two backups are created within the same
+        # second.  Previously, same-second calls produced identical IDs,
+        # causing the second backup directory to silently overwrite the first
+        # backup's manifest file while leaving orphaned files on disk.
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        unique_tag = uuid.uuid4().hex[:6]
+        backup_id = f"backup_{ts}_{unique_tag}" + (f"_{label}" if label else "")
         dest = self.backup_dir / backup_id
         dest.mkdir(parents=True, exist_ok=True)
 
@@ -97,8 +118,11 @@ class BackupManager:
         }
         (dest / self.MANIFEST_FILE).write_text(json.dumps(manifest, indent=2))
 
+        # BUG FIX 1 (continued): success requires at least one file to have
+        # been backed up AND no errors.  Previously success=True when all
+        # source files were missing (errors list populated, backed_up empty).
         return {
-            "success": len(errors) == 0,
+            "success": len(errors) == 0 and len(backed_up) > 0,
             "backup_id": backup_id,
             "backup_path": str(dest),
             "files_backed_up": len(backed_up),
