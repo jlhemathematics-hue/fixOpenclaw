@@ -12,12 +12,13 @@ import signal
 from pathlib import Path
 from typing import Optional
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent))
 
 from src.agents.orchestrator import Orchestrator
 from src.utils.config_loader import load_config
 from src.utils.logger import setup_logger
+from src.utils.backup_manager import BackupManager
 
 
 class FixOpenclawApp:
@@ -157,6 +158,96 @@ class FixOpenclawApp:
         finally:
             self.orchestrator.stop()
 
+    def run_restore_backup(
+        self,
+        backup_id: Optional[str] = None,
+        dry_run: bool = False,
+    ) -> None:
+        """
+        Restore OpenClaw configuration from a backup.
+
+        If backup_id is None, the most recent backup is used.
+
+        Args:
+            backup_id: Specific backup to restore (default: latest).
+            dry_run: Simulate restore without writing any files.
+        """
+        backup_dir = self.config.get("system", {}).get("backup_dir", "backups")
+        retention = self.config.get("system", {}).get("max_backup_age", 7)
+        mgr = BackupManager(backup_dir=backup_dir, retention_days=retention)
+
+        # Resolve the backup to use
+        if backup_id:
+            manifest = mgr.get_backup(backup_id)
+            if manifest is None:
+                print(f"\n❌  Backup not found: {backup_id}")
+                sys.exit(1)
+        else:
+            manifest = mgr.get_latest_backup()
+            if manifest is None:
+                print("\n❌  No backups available.")
+                sys.exit(1)
+
+        print("\n" + "=" * 60)
+        print("FixOpenclaw - Restore from Backup")
+        print("=" * 60)
+        print(f"Backup ID   : {manifest['backup_id']}")
+        print(f"Created at  : {manifest.get('created_at', 'unknown')}")
+        print(f"Label       : {manifest.get('label') or '—'}")
+        print(f"Files       : {len(manifest.get('files_backed_up', []))}")
+        if manifest.get("source_paths"):
+            for p in manifest["source_paths"]:
+                print(f"              • {p}")
+        if dry_run:
+            print("\n⚠️  DRY-RUN mode — no files will be changed")
+        print("=" * 60)
+
+        result = mgr.restore_backup(
+            backup_id=manifest["backup_id"],
+            verify_checksums=True,
+            dry_run=dry_run,
+        )
+
+        print()
+        if result["success"]:
+            prefix = "[DRY-RUN] " if dry_run else ""
+            print(f"✅  {prefix}Restore successful!")
+            for f in result["restored_files"]:
+                print(f"   ✓ {f}")
+        else:
+            print("❌  Restore failed:")
+            for err in result["errors"]:
+                print(f"   ✗ {err}")
+            sys.exit(1)
+        print("=" * 60 + "\n")
+
+    def run_list_backups(self) -> None:
+        """List all available backups."""
+        backup_dir = self.config.get("system", {}).get("backup_dir", "backups")
+        mgr = BackupManager(backup_dir=backup_dir)
+        backups = mgr.list_backups()
+
+        print("\n" + "=" * 60)
+        print("FixOpenclaw - Available Backups")
+        print("=" * 60)
+
+        if not backups:
+            print("  No backups found.")
+        else:
+            for i, b in enumerate(backups):
+                marker = " ← latest" if i == 0 else ""
+                print(f"\n  [{i + 1}] {b['backup_id']}{marker}")
+                print(f"       Created : {b.get('created_at', '?')}")
+                print(f"       Label   : {b.get('label') or '—'}")
+                print(f"       Files   : {len(b.get('files_backed_up', []))}")
+                if b.get("source_paths"):
+                    for p in b["source_paths"]:
+                        print(f"                 • {p}")
+
+        print("\n" + "=" * 60)
+        print(f"Total: {len(backups)} backup(s)")
+        print("=" * 60 + "\n")
+
     def run_interactive(self) -> None:
         """Run in interactive mode."""
         self.logger.info("Starting interactive mode")
@@ -175,9 +266,11 @@ class FixOpenclawApp:
                 print("  2. View system status")
                 print("  3. View metrics")
                 print("  4. Run full cycle")
-                print("  5. Exit")
+                print("  5. List backups")
+                print("  6. Restore latest backup")
+                print("  7. Exit")
 
-                choice = input("\nEnter choice (1-5): ").strip()
+                choice = input("\nEnter choice (1-7): ").strip()
 
                 if choice == "1":
                     result = self.orchestrator.trigger_monitoring()
@@ -203,6 +296,14 @@ class FixOpenclawApp:
                     print(f"Cycle complete: {result['status']}")
 
                 elif choice == "5":
+                    self.run_list_backups()
+
+                elif choice == "6":
+                    backup_id = input("  Backup ID (leave blank for latest): ").strip() or None
+                    dry = input("  Dry run? (y/N): ").strip().lower() == "y"
+                    self.run_restore_backup(backup_id=backup_id, dry_run=dry)
+
+                elif choice == "7":
                     break
 
                 else:
@@ -222,7 +323,7 @@ def main():
 
     parser.add_argument(
         "--mode",
-        choices=["auto", "once", "web", "interactive"],
+        choices=["auto", "once", "web", "interactive", "restore-backup", "list-backups"],
         default="auto",
         help="Operation mode (default: auto)"
     )
@@ -237,6 +338,19 @@ def main():
         "--log-file",
         type=str,
         help="Log file to analyze (for 'once' mode)"
+    )
+
+    parser.add_argument(
+        "--backup-id",
+        type=str,
+        default=None,
+        help="Backup ID to restore (for 'restore-backup' mode; default: latest)"
+    )
+
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Simulate restore without writing any files (for 'restore-backup' mode)"
     )
 
     args = parser.parse_args()
@@ -254,6 +368,10 @@ def main():
             app.run_web_dashboard()
         elif args.mode == "interactive":
             app.run_interactive()
+        elif args.mode == "restore-backup":
+            app.run_restore_backup(backup_id=args.backup_id, dry_run=args.dry_run)
+        elif args.mode == "list-backups":
+            app.run_list_backups()
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)

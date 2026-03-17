@@ -11,8 +11,8 @@ import pandas as pd
 from datetime import datetime, timedelta
 import time
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+# Add project root to path so `from src.xxx` imports work
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.agents.orchestrator import Orchestrator
 from src.utils.config_loader import load_config

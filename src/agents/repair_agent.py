@@ -13,6 +13,7 @@ import os
 from .base_agent import BaseAgent, AgentMessage
 from ..llm_providers.base_provider import LLMMessage
 from ..llm_providers.provider_factory import ProviderFactory
+from ..utils.backup_manager import BackupManager
 
 
 class RepairAgent(BaseAgent):
@@ -51,6 +52,14 @@ class RepairAgent(BaseAgent):
         self.require_approval = self.config.get("require_approval", False)
         self.max_retry = self.config.get("max_retry", 3)
         self.rollback_on_failure = self.config.get("rollback_on_failure", True)
+
+        # Real backup manager
+        backup_dir = self.config.get("backup_dir", "backups")
+        retention_days = self.config.get("backup_retention_days", 7)
+        self.backup_manager = BackupManager(
+            backup_dir=backup_dir,
+            retention_days=retention_days,
+        )
 
         self.repair_history = []
         self.successful_repairs = []
@@ -117,6 +126,10 @@ class RepairAgent(BaseAgent):
             return self._apply_repair(task)
         elif task_type == "rollback_repair":
             return self._rollback_repair(task)
+        elif task_type == "restore_backup":
+            return self._restore_from_backup(task)
+        elif task_type == "list_backups":
+            return self._list_backups(task)
         else:
             return {"status": "error", "message": f"Unknown task type: {task_type}"}
 
@@ -482,72 +495,178 @@ Provide fix details in JSON format:
 
     def _create_backup(self, fix_details: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Create backup before applying fix.
+        Create a real backup of target files before applying a fix.
 
         Args:
-            fix_details: Fix details
+            fix_details: Fix details (must contain 'target_files').
 
         Returns:
-            Backup result
+            Backup result dict.
         """
-        try:
-            target_files = fix_details.get("target_files", [])
-            backup_id = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        target_files = fix_details.get("target_files", [])
+        label = fix_details.get("repair_id", "")
 
-            self.logger.info(f"Creating backup: {backup_id}")
+        self.logger.info(f"Creating backup for {len(target_files)} file(s) ...")
 
-            # In real implementation, would backup actual files
-            for file_path in target_files:
-                self.logger.info(f"Would backup: {file_path}")
+        result = self.backup_manager.create_backup(
+            source_paths=target_files,
+            label=label,
+            metadata={"fix_type": fix_details.get("fix_type"), "changes": fix_details.get("changes")},
+        )
 
-            return {
-                "success": True,
-                "backup_id": backup_id,
-                "files_backed_up": len(target_files)
-            }
+        if result["success"]:
+            self.logger.info(f"Backup created: {result['backup_id']} ({result['files_backed_up']} files)")
+        else:
+            self.logger.error(f"Backup errors: {result['errors']}")
 
-        except Exception as e:
-            self.logger.error(f"Backup failed: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
+        return result
 
     def _rollback_repair(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Rollback a failed repair.
+        Rollback a failed repair by restoring the most recent backup
+        associated with that repair_id (falls back to latest backup).
 
         Args:
-            task: Task with repair ID
+            task: {'repair_id': str, 'backup_id': str (optional)}
 
         Returns:
-            Rollback result
+            Rollback result dict.
         """
         self.update_state(status="working", current_task="rolling_back")
 
-        repair_id = task.get("repair_id")
+        repair_id = task.get("repair_id", "")
+        backup_id = task.get("backup_id")  # explicit override
+
+        self.logger.info(f"Rolling back repair: {repair_id}")
 
         try:
-            self.logger.info(f"Rolling back repair: {repair_id}")
+            # Try to find the backup that matches this repair_id via label
+            if not backup_id:
+                for b in self.backup_manager.list_backups():
+                    if b.get("label") == repair_id:
+                        backup_id = b["backup_id"]
+                        break
 
-            # In real implementation, would restore from backup
-            rollback_result = {
-                "status": "success",
-                "repair_id": repair_id,
-                "rollback_at": datetime.now().isoformat(),
-                "message": "Rollback completed successfully"
-            }
+            result = self.backup_manager.restore_backup(backup_id=backup_id)
 
-            self.update_state(status="idle", last_action=f"rolled_back_{repair_id}")
-            return rollback_result
+            if result["success"]:
+                self.logger.info(
+                    f"Rollback successful: restored {len(result['restored_files'])} file(s) "
+                    f"from backup {result['backup_id']}"
+                )
+                self.update_state(status="idle", last_action=f"rolled_back_{repair_id}")
+                return {
+                    "status": "success",
+                    "repair_id": repair_id,
+                    "backup_id": result["backup_id"],
+                    "restored_files": result["restored_files"],
+                    "rollback_at": datetime.now().isoformat(),
+                    "message": "Rollback completed successfully",
+                }
+            else:
+                self.logger.error(f"Rollback failed: {result['errors']}")
+                self.update_state(status="error")
+                return {
+                    "status": "error",
+                    "repair_id": repair_id,
+                    "errors": result["errors"],
+                    "message": "Rollback failed",
+                }
 
         except Exception as e:
-            self.logger.error(f"Rollback failed: {e}")
+            self.logger.error(f"Rollback exception: {e}")
+            self.update_state(status="error")
+            return {"status": "error", "repair_id": repair_id, "message": str(e)}
+
+    def _restore_from_backup(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Restore OpenClaw config from a specific (or latest) backup.
+
+        Args:
+            task: {
+                'backup_id': str (optional, defaults to latest),
+                'dry_run': bool (optional, default False),
+                'verify': bool (optional, default True),
+            }
+
+        Returns:
+            Restore result dict.
+        """
+        self.update_state(status="working", current_task="restoring_backup")
+
+        backup_id = task.get("backup_id")
+        dry_run = task.get("dry_run", False)
+        verify = task.get("verify", True)
+
+        # Show which backup will be used
+        if backup_id:
+            manifest = self.backup_manager.get_backup(backup_id)
+        else:
+            manifest = self.backup_manager.get_latest_backup()
+
+        if manifest is None:
+            self.update_state(status="error")
             return {
                 "status": "error",
-                "repair_id": repair_id,
-                "message": str(e)
+                "message": "No backup found to restore.",
             }
+
+        self.logger.info(
+            f"Restoring from backup: {manifest['backup_id']} "
+            f"(created {manifest.get('created_at', '?')}) "
+            f"{'[DRY-RUN]' if dry_run else ''}"
+        )
+
+        result = self.backup_manager.restore_backup(
+            backup_id=manifest["backup_id"],
+            verify_checksums=verify,
+            dry_run=dry_run,
+        )
+
+        if result["success"]:
+            self.logger.info(
+                f"Restore complete: {len(result['restored_files'])} file(s) restored"
+            )
+            self.update_state(status="idle", last_action="restore_backup")
+            return {
+                "status": "success",
+                "backup_id": result["backup_id"],
+                "backup_created_at": result.get("backup_created_at"),
+                "restored_files": result["restored_files"],
+                "dry_run": dry_run,
+                "message": (
+                    f"[DRY-RUN] Would restore {len(result['restored_files'])} file(s)"
+                    if dry_run
+                    else f"Restored {len(result['restored_files'])} file(s) from backup {result['backup_id']}"
+                ),
+            }
+        else:
+            self.logger.error(f"Restore failed: {result['errors']}")
+            self.update_state(status="error")
+            return {
+                "status": "error",
+                "backup_id": result.get("backup_id"),
+                "errors": result["errors"],
+                "message": "Restore failed",
+            }
+
+    def _list_backups(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        """Return a summary of all available backups, newest first."""
+        backups = self.backup_manager.list_backups()
+        return {
+            "status": "success",
+            "count": len(backups),
+            "backups": [
+                {
+                    "backup_id": b["backup_id"],
+                    "created_at": b.get("created_at"),
+                    "label": b.get("label", ""),
+                    "files_backed_up": len(b.get("files_backed_up", [])),
+                    "source_paths": b.get("source_paths", []),
+                }
+                for b in backups
+            ],
+        }
 
     def _parse_llm_json_response(self, response: str) -> Dict[str, Any]:
         """
