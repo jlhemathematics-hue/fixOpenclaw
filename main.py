@@ -12,8 +12,8 @@ import signal
 from pathlib import Path
 from typing import Optional
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent))
 
 from src.agents.orchestrator import Orchestrator
 from src.utils.config_loader import load_config
