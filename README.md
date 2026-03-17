@@ -172,25 +172,19 @@ python main.py --mode web
 python main.py --mode auto
 
 # One-time diagnosis
-python main.py --mode diagnose --log-file /path/to/log
+python main.py --mode once --log-file /path/to/log
 
 # Interactive mode
 python main.py --mode interactive
-```
 
-#### API Server
+# List available backups
+python main.py --mode list-backups
 
-```bash
-# Start REST API server
-python main.py --mode api --port 8000
+# Restore from backup (latest by default)
+python main.py --mode restore-backup
 
-# API endpoints:
-# GET  /health          - System health check
-# GET  /status          - Current status and metrics
-# POST /diagnose        - Trigger diagnosis
-# POST /repair          - Trigger repair
-# GET  /history         - Repair history
-# POST /config          - Update configuration
+# Restore a specific backup (dry-run)
+python main.py --mode restore-backup --backup-id <id> --dry-run
 ```
 
 ## 📂 Project Structure
